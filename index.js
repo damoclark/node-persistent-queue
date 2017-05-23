@@ -101,6 +101,13 @@ function PersistentQueue(filename,batchSize) {
 	this.db = null ;
 
 	/**
+	 * The queue's sqlite database is open
+	 * @type {boolean}
+	 * @access private
+	 */
+	this.opened = false ;
+
+	/**
 	 * Should the queue process messages
 	 * @type {boolean}
 	 * @access private
@@ -175,10 +182,12 @@ function PersistentQueue(filename,batchSize) {
 	}) ;
 
 	this.on('open',function(db) {
+		self.opened = true ;
 	}) ;
 
 	// Unset the db variable when db is closed
 	this.on('close',function() {
+		self.opened = false ;
 		self.db = null ;
 		self.empty = undefined ;
 		self.run = false ;
@@ -337,6 +346,24 @@ PersistentQueue.prototype.isEmpty = function() {
 	if(this.empty === undefined)
 		throw new Error("Call open() method before calling isEmpty()") ;
 	return this.empty ;
+} ;
+
+/**
+ * Is the queue started and processing jobs
+ *
+ * @return {boolean} True if started, otherwise false
+ */
+PersistentQueue.prototype.isStarted = function() {
+	return this.run ;
+} ;
+
+/**
+ * Is the queue's SQLite DB open
+ *
+ * @return {boolean} True if opened, otherwise false
+ */
+PersistentQueue.prototype.isOpen = function() {
+	return this.opened ;
 } ;
 
 /**

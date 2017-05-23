@@ -159,6 +159,7 @@ describe('Emitters',function() {
 		q.start() ;
 
 		s.should.be.calledOnce() ;
+		q.isStarted().should.be.equal(true) ;
 		done() ;
 	}) ;
 
@@ -259,6 +260,7 @@ describe('Emitters',function() {
 			var stop = 0 ;
 			q.on('stop',function(){
 				(++stop).should.be.equal(1) ;
+				q.isStarted().should.be.equal(false) ;
 				done() ;
 			}) ;
 
@@ -281,7 +283,8 @@ describe('Emitters',function() {
 			var q1 = new Queue(':memory:') ;
 			var open = 0;
 			q1.on('open', function () {
-				(++open).should.be.equal(1);
+				(++open).should.be.equal(1) ;
+				q1.isOpen().should.be.equal(true) ;
 				q1.close()
 				.then(function () {
 					done() ;
@@ -295,6 +298,7 @@ describe('Emitters',function() {
 			var close = 0;
 			q1.on('close', function () {
 				(++close).should.be.equal(1);
+				q1.isOpen().should.be.equal(false) ;
 			}) ;
 			q1.open()
 			.then(function() {

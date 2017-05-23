@@ -1,6 +1,6 @@
 {
   "name": "node-persistent-queue",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Simple SQLite backed Queue for long running jobs in Node.js",
   "main": "index.js",
   "keywords": [
