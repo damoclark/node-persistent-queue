@@ -248,9 +248,8 @@ PersistentQueue.prototype.open = function open() {
 		return hydrateQueue(self,self.batchSize)
 		.then(function(jobs) {
 			//If no msg left, set empty to true (but don't emit event)
-			if(self.queue.length === 0) {
-				self.empty = true ;
-			}
+			self.empty = (self.queue.length === 0) ;
+
 			self.emit('open',self.db) ;
 			return Promise.resolve(jobs) ;
 		}) ;
