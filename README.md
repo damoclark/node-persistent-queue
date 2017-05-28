@@ -5,8 +5,11 @@
 
 ## Overview
 
-Simple SQLite backed Queue for long running sequential tasks in Node.js using `setImmediate()`
+Simple SQLite backed Queue for running many short tasks in Node.js using `setImmediate()`
 
+If you have a large batch of small running tasks, this library will allow them to execute 
+in sequence via the main event thread of node.js without blocking/starving other
+node.js events.
 
 ## Description
 
@@ -37,8 +40,6 @@ events thread.
 ```bash
 $ npm install --save node-persistent-queue
 ```
-
-
 
 ## Usage
 
@@ -82,15 +83,15 @@ var q = new Queue('./path/to/db.sqlite',1000) ; // Grab 1000 at a time
 
 `node-persistent-queue` emits events according to the following table:
 
-| Event | Description                                                                                                                                                                                     | Event Handler Parameters                                                                        |
-|:-----:|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
-| start | Emitted when the queue starts processing tasks (after calling .start() method)                                                                                                                  | q.on('start',function(){<br/> }) ;                                                              |
-|  stop | Emitted when the queue stops processing tasks (after calling .stop() method)                                                                                                                    | q.on('stop',function(){<br/>}) ;                                                                |
-|  next | Emitted when the next task is to be executed.  This occurs:<br/> * when there are items in the queue and .start() has been called; or<br/> * after .add() has been called to add a task to an empty queue | q.on('next',function(job) {<br/>&nbsp;&nbsp;job.id,<br/>&nbsp;&nbsp;job.job <br/>}) ; |
-| empty | Emitted when the last task is completed and removed from the db                                                                                                                                 | q.on('empty',function() {<br/> }) ;                                                             |
-|   add | Emitted when a task has been added to the queue (after calling .add() method)                                                                                                                   | q.on('add',function(job) {<br/>&nbsp;&nbsp;job.id,<br/>&nbsp;&nbsp;job.job <br/>}) ;            |
-|  open | Emitted when the sqlite database has been opened successfully (after calling .open() method)                                                                                                    | q.on('open',function(sqlite) {<br/>&nbsp;&nbsp;sqlite //instance of sqlite3.Database <br/>}) ;  |
-| close | Emitted when the sqlite database has been closed successfully (after calling .close() method)                                                                                                   | q.on('close',function() {<br/> }) ;                                                             |
+| Event | Description                                                                                                                                                                                     | Event Handler Parameters                                                                                                        |
+|:-----:|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| start | Emitted when the queue starts processing tasks (after calling .start() method)                                                                                                                  | q.on('start',function(){<br/> }) ;                                                                                              |
+|  stop | Emitted when the queue stops processing tasks (after calling .stop() method)                                                                                                                    | q.on('stop',function(){<br/>}) ;                                                                                                |
+|  next | Emitted when the next task is to be executed.  This occurs:<br/> * when there are items in the queue and .start() has been called; or<br/> * after .add() has been called to add a task to an empty queue and queue `isStarted()` already | q.on('next',function(job) {<br/>&nbsp;&nbsp;job.id,<br/>&nbsp;&nbsp;job.job <br/>}) ; |
+| empty | Emitted when the last task is completed and removed from the db                                                                                                                                 | q.on('empty',function() {<br/> }) ;                                                                                             |
+|   add | Emitted when a task has been added to the queue (after calling .add() method)                                                                                                                   | q.on('add',function(job) {<br/>&nbsp;&nbsp;job.id,<br/>&nbsp;&nbsp;job.job <br/>}) ;                                            |
+|  open | Emitted when the sqlite database has been opened successfully (after calling .open() method)                                                                                                    | q.on('open',function(sqlite) {<br/>&nbsp;&nbsp;sqlite //instance of sqlite3.Database <br/>}) ;                                  |
+| close | Emitted when the sqlite database has been closed successfully (after calling .close() method)                                                                                                   | q.on('close',function() {<br/> }) ;                                                                                             |
 
 ### Contrived Example
 
@@ -105,7 +106,7 @@ callback method.  This will then schedule another `next` event to be emitted, us
 The `.add()` method allow call chaining as illustrated below.
 
 ```javascript
-var Queue = require('./index') ;
+var Queue = require('node-persistent-queue') ;
 var q = new Queue(':memory:') ;
 
 var task1 = {
@@ -123,10 +124,12 @@ var task4 = {
 
 q.on('open',function() {
 	console.log('Opening SQLite DB') ;
+	console.log('Queue contains '+q.getLength()+' job/s') ;
 }) ;
 
 q.on('add',function(task) {
 	console.log('Adding task: '+JSON.stringify(task)) ;
+	console.log('Queue contains '+q.getLength()+' job/s') ;
 }) ;
 
 q.on('start',function() {
@@ -134,6 +137,7 @@ q.on('start',function() {
 }) ;
 
 q.on('next',function(task) {
+	console.log('Queue contains '+q.getLength()+' job/s') ;
 	console.log('Process task: ') ;
 	console.log(JSON.stringify(task)) ;
 
@@ -144,6 +148,7 @@ q.on('next',function(task) {
 
 // Stop the queue when it gets empty
 q.on('empty',function() {
+	console.log('Queue contains '+q.getLength()+' job/') ;
 	q.stop() ;
 	q.close()
 	.then(function() {
@@ -172,26 +177,36 @@ q.open()
 	console.log(err) ;
 	process.exit(1) ;
 }) ;
+
 ```
 
 The above script produces the following output:
 
 ```
 Opening SQLite DB
+Queue contains 0 job/s
 Starting queue
 Adding task: {"id":1,"job":{"data":"Data1"}}
+Queue contains 1 job/s
 Adding task: {"id":2,"job":{"data":"Data2"}}
+Queue contains 2 job/s
 Adding task: {"id":3,"job":{"data":"Data3"}}
+Queue contains 3 job/s
 Adding task: {"id":4,"job":{"data":"Data4"}}
+Queue contains 4 job/s
+Queue contains 4 job/s
 Process task: 
 {"id":1,"job":{"data":"Data1"}}
+Queue contains 3 job/s
 Process task: 
 {"id":2,"job":{"data":"Data2"}}
+Queue contains 2 job/s
 Process task: 
 {"id":3,"job":{"data":"Data3"}}
+Queue contains 1 job/s
 Process task: 
 {"id":4,"job":{"data":"Data4"}}
-Queue is empty
+Queue contains 0 job/
 Stopping queue
 Closing SQLite DB
 ```

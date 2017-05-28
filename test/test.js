@@ -29,6 +29,9 @@ var debug = false ;
 
 var should = require('should') ;
 var sinon = require('sinon') ;
+var os = require('os') ;
+var fs = require('fs') ;
+
 require('should-sinon') ;
 
 var Queue = require('../index') ;
@@ -89,6 +92,74 @@ describe('Open Errors', function () {
 		done();
 	});
 });
+
+describe('Maintaining queue length count', function() {
+	it('should count existing jobs in db on open',function (done) {
+		var q = new Queue('./test/db2.sqlite') ;
+		q.open()
+		.then(function() {
+			q.getLength().should.equal(1) ;
+			return q.close() ;
+		})
+		.then(function() {
+			done() ;
+		})
+		.catch(function(err) {
+			done(err) ;
+		}) ;
+	}) ;
+
+	it('should count jobs as added and completed',function(done) {
+		var tmpdb = os.tmpdir() + process.pid + '.sqlite' ;
+		var q = new Queue(tmpdb) ;
+
+		/**
+		 * Count jobs
+		 * @type {integer}
+		 */
+		var c = 0 ;
+
+		q.on('add',function() {
+			q.getLength().should.equal(++c) ;
+		}) ;
+
+		q.open()
+		.then(function() {
+			q.add('1')
+			.add('2')
+			.add('3') ;
+
+			return q.close() ;
+		})
+		.then(function() {
+			q = new Queue(tmpdb) ;
+
+			return q.open() ;
+		})
+		.then(function() {
+			q.getLength().should.equal(3) ;
+
+			q.on('next',function() {
+				q.getLength().should.equal(c--) ;
+				q.done() ;
+			}) ;
+
+			q.on('empty',function() {
+				q.getLength().should.equal(0) ;
+				q.close()
+				.then(function() {
+					fs.unlinkSync(tmpdb) ;
+					done() ;
+				}) ;
+			}) ;
+
+			q.start() ;
+		})
+		.catch(function(err) {
+			done(err) ;
+		}) ;
+	}) ;
+}) ;
 
 describe('Close Errors',function() {
 	var q = new Queue(':memory:') ;
@@ -189,7 +260,9 @@ describe('Emitters',function() {
 	it('should emit empty',function(done) {
 		var empty = 0 ;
 		q.on('empty',function(){
+			// empty should only emit once
 			(++empty).should.be.equal(1) ;
+			q.getLength().should.equal(0) ;
 			done() ;
 		}) ;
 
@@ -206,6 +279,7 @@ describe('Emitters',function() {
 		var next = 0 ;
 		q.on('empty',function(){
 			next.should.be.equal(3) ;
+			q.getLength().should.equal(0) ;
 			done() ;
 		}) ;
 
@@ -220,10 +294,11 @@ describe('Emitters',function() {
 		q.start() ;
 	}) ;
 
-	it('3 adds after start should emit 3 nexts',function(done) {
+	it('should add 3 jobs and after start should emit 3 nexts',function(done) {
 		var next = 0 ;
 		q.on('empty',function(){
 			next.should.be.equal(3) ;
+			q.getLength().should.equal(0) ;
 			done() ;
 		}) ;
 
@@ -238,10 +313,11 @@ describe('Emitters',function() {
 		q.add('3') ;
 	}) ;
 
-	it('start in middle of 3 adds should emit 3 nexts',function(done) {
+	it('should start in middle of 3 adds and should emit 3 nexts',function(done) {
 		var next = 0 ;
 		q.on('empty',function(){
 			next.should.be.equal(3) ;
+			q.getLength().should.equal(0) ;
 			done() ;
 		}) ;
 
