@@ -340,6 +340,17 @@ PersistentQueue.prototype.done = function() {
 } ;
 
 /**
+ * Called by user from within their 'next' event handler when error occurred and job to remain at head of queue
+ *
+ * It will leave the current job in the queue and stop the queue
+ */
+PersistentQueue.prototype.abort = function() {
+	var self = this ;
+	if(self.debug) console.log('Calling abort!') ;
+	self.stop() ;
+} ;
+
+/**
  * Called by user to add a job to the queue
  *
  * @param {Object} job Object to be serialized and added to queue via JSON.stringify()
@@ -414,6 +425,45 @@ PersistentQueue.prototype.getSqlite3 = function() {
 	return this.db ;
 } ;
 
+/**
+ * Returns true if there is a job with 'id' still in queue, otherwise false
+ * @param {integer} id The job id to search for
+ * @return {Promise} Promise resolves true if the job id is still in the queue, otherwise false
+ */
+PersistentQueue.prototype.has = function(id) {
+	// First search the in-memory queue as its quick
+
+	return new Promise(function(reject,resolve) {
+		for(var i=0;i<self.queue.length;i++) {
+			if(self.queue[i].id === id)
+				resolve(true) ;
+		}
+		// Now check the on-disk queue
+		this.db.get("SELECT id FROM " + table + " where id = ?", id, function(err, row) {
+			if(err !== null)
+				reject(err) ;
+
+			// Return true if there is a record, otherwise return false
+			resolve(row !== undefined) ;
+		}) ;
+	}) ;
+} ;
+
+/**
+ * Delete a job from the queue (if it exists)
+ * @param {integer} id The job id number to delete
+ */
+PersistentQueue.prototype.delete = function(id) {
+	var self = this ;
+	return removeJob(this,id)
+	.then(function() {
+		if(self.debug) console.log('Job deleted from db') ;
+		self.emit('delete',{ id: id }) ;
+		// Decrement our job length
+		self.length-- ;
+	}) ;
+} ;
+
 function countQueue(self) {
 	if(self.debug) console.log('CountQueue') ;
 	return new Promise(function(resolve,reject) {
@@ -466,30 +516,41 @@ function hydrateQueue(self,size) {
 }
 
 /**
- * This function will remove the current job from the database and in-memory array
+ * This function will remove the given or current job from the database and in-memory array
  * @param {PersistentQueue} self Instance to work with
+ * @param {integer} [id] Optional job id number to remove, if omitted, remove current job at front of queue
  * @return {Promise}
  */
-function removeJob(self) {
-	var job = self.queue.shift() ;
+function removeJob(self,id) {
+	if(id === undefined) {
+		id = self.queue.shift().id ;
+	}
+	else {
+		// Search queue for id and remove if exists
+		for(var i=0;i<self.queue.length;i++) {
+			if(self.queue[i].id === id) {
+				self.queue.splice(i,1) ;
+				break ;
+			}
+		}
+	}
 
 	return new Promise(function(resolve,reject) {
 		if(self.db === null)
 			reject('Open queue database before starting queue') ;
 
 		if(self.debug) console.log('About to delete') ;
-		if(self.debug) console.log('Removing job: '+JSON.stringify(job)) ;
+		if(self.debug) console.log('Removing job: '+id) ;
 		if(self.debug) console.log('From table: '+table) ;
-		if(self.debug) console.log('With id: '+job.id) ;
 		if(self.debug) console.log('With queue length: '+self.length) ;
-		self.db.run("DELETE FROM " + table + " WHERE id = ?", job.id, function(err) {
+		self.db.run("DELETE FROM " + table + " WHERE id = ?", id, function(err) {
 			if(err !== null)
 				reject(err) ;
 
 			if(this.changes) // Number of rows affected (0 == false)
-				resolve(job.id) ;
+				resolve(id) ;
 
-			reject("Job id "+job.id+" was not removed from queue") ;
+			reject("Job id "+id+" was not removed from queue") ;
 		});
 	}) ;
 }
