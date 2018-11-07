@@ -31,6 +31,7 @@ var should = require('should') ;
 var sinon = require('sinon') ;
 var os = require('os') ;
 var fs = require('fs') ;
+var path = require('path') ;
 
 require('should-sinon') ;
 
@@ -110,7 +111,7 @@ describe('Maintaining queue length count', function() {
 	}) ;
 
 	it('should count jobs as added and completed',function(done) {
-		var tmpdb = os.tmpdir() + process.pid + '.sqlite' ;
+		var tmpdb = os.tmpdir() + path.sep + process.pid + '.sqlite' ;
 		var q = new Queue(tmpdb) ;
 
 		/**
