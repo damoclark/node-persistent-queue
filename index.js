@@ -227,6 +227,12 @@ PersistentQueue.prototype.open = function open() {
 		}) ;
 	})
 	.then(function() {
+		// Puts the execution mode into serialized. This means that at most one statement object can execute a query
+		// at a time. Other statements wait in a queue until the previous statements are executed.
+		// If you call it without a function parameter, the execution mode setting is sticky and won't change until
+		// the next call to Database#parallelize.
+		// https://github.com/mapbox/node-sqlite3/wiki/Control-Flow#databaseserializecallback
+		self.db.serialize() ;
 		// Create and initialise tables if they doesnt exist
 		return new Promise(function(resolve,reject) {
 			query = " \
