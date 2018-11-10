@@ -58,6 +58,40 @@ describe('Calling Constructor',function() {
 	}) ;
 }) ;
 
+describe('Correct queue fifo order',function() {
+	var q ;
+	before(function (done) {
+		// Remove previous db3.sqlite (if exists) before creating db anew
+		fs.unlink('./test/db3.sqlite', function() {
+			q = new Queue('./test/db3.sqlite') ;
+			done() ;
+		}) ;
+	}) ;
+
+	it('should execute jobs in fifo order', function (done) {
+		var sequence = 0;
+		q.on('next', function(task) {
+			task.job.sequence.should.equal(sequence++) ;
+			q.done();
+		});
+
+		q.on('empty',function() {
+			q.close() ;
+			done() ;
+		}) ;
+
+		q.open()
+		.then(function() {
+			q.start() ;
+
+			for(var i = 0; i < 1000; ++i) {
+				var task = {sequence:i} ;
+				q.add(task) ;
+			}
+		}) ;
+	}) ;
+}) ;
+
 describe('Unopened SQLite DB',function() {
 	var q = new Queue(':memory:', 2);
 
