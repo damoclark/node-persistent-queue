@@ -24,10 +24,10 @@
   },
   "license": "GPL-3.0+",
   "dependencies": {
-    "sqlite3": "^3.1.8"
+    "sqlite3": "^4.0.4"
   },
   "devDependencies": {
-    "mocha": "^3.4.1",
+    "mocha": "^5.2.0",
     "should": "^11.2.1",
     "should-sinon": "0.0.5",
     "sinon": "^2.2.0"
