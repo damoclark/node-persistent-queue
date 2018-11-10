@@ -1,6 +1,6 @@
 {
   "name": "node-persistent-queue",
-  "version": "0.4.0pre1",
+  "version": "0.3.1",
   "description": "Simple SQLite backed Queue for running many short tasks in Node.js event thread",
   "main": "index.js",
   "keywords": [
