@@ -474,6 +474,18 @@ PersistentQueue.prototype.getJobIds = function(job) {
 PersistentQueue.prototype.getFirstJobId = function(job) {
 	var self = this ;
 	return new Promise(function(resolve,reject) {
+		// search in-memory queue first
+		var jobstr = JSON.stringify(job) ;
+		// console.warn(`jobstr=${jobstr}`);
+		var i = self.queue.findIndex(function(j) {
+			// console.warn(`job=${JSON.stringify(j)}`);
+			return (JSON.stringify(j.job) === jobstr) ;
+		}) ;
+		if (i !== -1) {
+			resolve(self.queue[i].id);
+			return ;
+		}
+		// Otherwise have to search rest of db queue
 		searchQueue(self,job)
 		.then(function(data){
 			if (data.length === 0) {

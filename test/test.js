@@ -95,7 +95,7 @@ describe('Correct queue fifo order',function() {
 describe('Search remaining jobs',function() {
 	var q ;
 	beforeEach(function (done) {
-		q = new Queue(':memory:') ;
+		q = new Queue(':memory:',10) ;
 		q.open()
 		.then(function () {
 			done();
@@ -125,6 +125,43 @@ describe('Search remaining jobs',function() {
 				q.close().then(function(){
 					done() ;
 				}) ;
+			})
+			.catch(function(err){
+				console.log(err);
+			})
+
+		}) ;
+	}) ;
+
+	it('should find first job in the in-memory queue', function (done) {
+		var sequence = 0;
+		q.open()
+		.then(function() {
+
+			var promises = [] ;
+			promises.push(q.add({})) ;
+			for(var i = 1; i <= 1000; ++i) {
+				var task = {sequence:i % 501} ;
+				promises.push(q.add(task)) ;
+			}
+
+			// Grab first job and throw away so in-memory queue is hydrated
+			q.on('next',function(job) {
+				q.stop() ;
+				q.done() ;
+				// Now let's check if all items are
+				for(var i = 1; i <= 500; ++i) {
+					q.getFirstJobId({sequence:i}).should.be.fulfilledWith(i+1) ;
+				}
+				q.close().then(function(){
+					done() ;
+				}) ;
+			}) ;
+
+			// Wait for all tasks to be added before calling hasJob method to search for it
+			Promise.all(promises)
+			.then(function(){
+				q.start() ;
 			})
 			.catch(function(err){
 				console.log(err);
