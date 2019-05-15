@@ -360,21 +360,23 @@ PersistentQueue.prototype.abort = function() {
  * Called by user to add a job to the queue
  *
  * @param {Object} job Object to be serialized and added to queue via JSON.stringify()
- * @return {PersistentQueue} Instance for method chaining
+ * @return {Promise<integer>} Job id
  */
 PersistentQueue.prototype.add = function(job) {
 	var self = this ;
 
-	self.db.run("INSERT INTO " + table + " (job) VALUES (?)", JSON.stringify(job), function(err) {
-		if(err)
-			throw err ;
+	return new Promise(function(resolve,reject) {
+		self.db.run("INSERT INTO " + table + " (job) VALUES (?)", JSON.stringify(job), function(err) {
+			if(err)
+				reject(err) ;
 
-		// Increment our job length
-		self.length++ ;
+			// Increment our job length
+			self.length++ ;
 
-		self.emit('add',{ id:this.lastID, job: job }) ;
-	});
-	return self ;
+			self.emit('add',{ id:this.lastID, job: job }) ;
+			resolve(this.id) ;
+		});
+	}) ;
 } ;
 
 /**
@@ -456,6 +458,35 @@ PersistentQueue.prototype.has = function(id) {
 } ;
 
 /**
+ * Return an array of job id numbers matching the given job data in order of execution
+ * @param {object} job
+ * @return {Promise<array>}
+ */
+PersistentQueue.prototype.getJobIds = function(job) {
+	return searchQueue(this, job) ;
+} ;
+
+/**
+ * Return an array of job id numbers matching the given job data in order of execution
+ * @param {object} job
+ * @return {Promise<array>}
+ */
+PersistentQueue.prototype.getFirstJobId = function(job) {
+	var self = this ;
+	return new Promise(function(resolve,reject) {
+		searchQueue(self,job)
+		.then(function(data){
+			if (data.length === 0) {
+				resolve(null) ;
+				return ;
+			}
+			resolve(data[0]) ;
+		}) ;
+	}) ;
+} ;
+
+
+/**
  * Delete a job from the queue (if it exists)
  * @param {integer} id The job id number to delete
  */
@@ -483,6 +514,29 @@ function countQueue(self) {
 			// Set length property to number of rows in sqlite table
 			self.length = row.counter ;
 			resolve(this.length) ;
+		}) ;
+	}) ;
+}
+
+function searchQueue(self,job) {
+
+	if(self.debug) console.log('SearchQueue') ;
+	return new Promise(function(resolve,reject) {
+		if(self.db === null)
+			reject('Open queue database before starting queue') ;
+
+		self.db.all("SELECT id FROM " + table + " where job ='" + JSON.stringify(job) + "' ORDER BY id ASC", function(err, jobs) {
+			if(err !== null)
+				reject(err) ;
+
+			jobs = jobs.map(function(j){ return j.id}) ;
+
+			if(self.debug) {
+				for(var i = 0; i < jobs.length; i++) {
+					if(self.debug) console.log(JSON.stringify(jobs[i])) ;
+				}
+			}
+			resolve(jobs) ;
 		}) ;
 	}) ;
 }

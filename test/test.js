@@ -92,6 +92,124 @@ describe('Correct queue fifo order',function() {
 	}) ;
 }) ;
 
+describe('Search remaining jobs',function() {
+	var q ;
+	beforeEach(function (done) {
+		q = new Queue(':memory:') ;
+		q.open()
+		.then(function () {
+			done();
+		})
+		.catch(function(err) {
+			done(err) ;
+		}) ;
+	});
+
+	it('should find first job in the queue', function (done) {
+		var sequence = 0;
+		q.open()
+		.then(function() {
+
+			var promises = [] ;
+			for(var i = 1; i <= 1000; ++i) {
+				var task = {sequence:i % 501} ;
+				promises.push(q.add(task)) ;
+			}
+
+			// Wait for all tasks to be added before calling hasJob method to search for it
+			Promise.all(promises)
+			.then(function(){
+				for(var i = 1; i <= 500; ++i) {
+					q.getFirstJobId({sequence:i}).should.be.fulfilledWith(i) ;
+				}
+				q.close().then(function(){
+					done() ;
+				}) ;
+			})
+			.catch(function(err){
+				console.log(err);
+			})
+
+		}) ;
+	}) ;
+
+	it('should find all matching jobs in the queue and in order', function (done) {
+		var sequence = 0;
+		q.open()
+		.then(function() {
+
+			var promises = [] ;
+			for(var i = 1; i <= 10; ++i) {
+				var task = {sequence:i % 5} ;
+				promises.push(q.add(task)) ;
+			}
+
+			// Wait for all tasks to be added before calling hasJob method to search for it
+			Promise.all(promises)
+			.then(function(){
+				for(var i = 1; i <= 5; ++i) {
+					q.getJobIds({sequence:i % 5}).should.be.fulfilledWith([i,i + 5]) ;
+				}
+				q.close().then(function(){
+					done() ;
+				}) ;
+			}) ;
+
+		}) ;
+	})
+
+	it('should return empty array if job not in queue', function (done) {
+		var sequence = 0;
+		q.open()
+		.then(function() {
+
+			var promises = [] ;
+			for(var i = 1; i <= 10; ++i) {
+				var task = {sequence:i} ;
+				promises.push(q.add(task)) ;
+			}
+
+			// Wait for all tasks to be added before calling hasJob method to search for it
+			Promise.all(promises)
+			.then(function(){
+				for(var i = 1; i <= 5; ++i) {
+					q.getJobIds({sequence:100}).should.be.fulfilledWith([]) ;
+				}
+				q.close().then(function(){
+					done() ;
+				}) ;
+			}) ;
+
+		}) ;
+	}) ;
+
+	it('should return null if job not in queue', function (done) {
+		var sequence = 0;
+		q.open()
+		.then(function() {
+
+			var promises = [] ;
+			for(var i = 1; i <= 10; ++i) {
+				var task = {sequence:i} ;
+				promises.push(q.add(task)) ;
+			}
+
+			// Wait for all tasks to be added before calling hasJob method to search for it
+			Promise.all(promises)
+			.then(function(){
+				for(var i = 1; i <= 5; ++i) {
+					q.getFirstJobId({sequence:100}).should.be.fulfilledWith(null) ;
+				}
+				q.close().then(function(){
+					done() ;
+				}) ;
+			}) ;
+
+		}) ;
+	}) ;
+
+}) ;
+
 describe('Unopened SQLite DB',function() {
 	var q = new Queue(':memory:', 2);
 
@@ -160,9 +278,9 @@ describe('Maintaining queue length count', function() {
 
 		q.open()
 		.then(function() {
-			q.add('1')
-			.add('2')
-			.add('3') ;
+			q.add('1') ;
+			q.add('2') ;
+			q.add('3') ;
 
 			return q.close() ;
 		})
