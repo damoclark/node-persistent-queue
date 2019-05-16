@@ -27,6 +27,7 @@
     "sqlite3": "^4.0.4"
   },
   "devDependencies": {
+    "eslint": "^5.16.0",
     "mocha": "^5.2.0",
     "should": "^11.2.1",
     "should-sinon": "0.0.5",
