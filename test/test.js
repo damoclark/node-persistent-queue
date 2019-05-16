@@ -308,7 +308,7 @@ describe('Maintaining queue length count', function() {
 
 		/**
 		 * Count jobs
-		 * @type {integer}
+		 * @type {number}
 		 */
 		var c = 0 ;
 

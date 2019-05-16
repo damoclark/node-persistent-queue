@@ -25,7 +25,7 @@
 
 /**
  * @typdef {Object} PersistentQueue~Job
- * @property {integer} id A sequenced identifier for the job
+ * @property {number} id A sequenced identifier for the job
  * @property {Object} job An object containing arbitrary data for the job
  */
 
@@ -53,7 +53,7 @@ var table_count = 'queue_count' ;
  *
  * @author Damien Clark <damo.clarky@gmail.com>
  * @param {string} [filename=:memory:] Path to sqlite db for queue db
- * @param {integer} [batchSize=10] The number of rows from queue db to retrieve at a time
+ * @param {number} [batchSize=10] The number of rows from queue db to retrieve at a time
  * @constructor
  */
 function PersistentQueue(filename, batchSize) {
@@ -104,7 +104,7 @@ function PersistentQueue(filename, batchSize) {
 
 	/**
 	 * Keep track of total number of jobs in queue
-	 * @type {integer}
+	 * @type {number}
 	 * @access private
 	 */
 	this.length  = null ;
@@ -239,29 +239,29 @@ PersistentQueue.prototype.open = function open() {
 		self.db.serialize() ;
 		// Create and initialise tables if they doesnt exist
 		return new Promise(function(resolve, reject) {
-			var query = ' \
-			CREATE TABLE IF NOT EXISTS ' + table + ' (id INTEGER PRIMARY KEY ASC AUTOINCREMENT, job TEXT) ; \
-			\
-			CREATE TABLE IF NOT EXISTS ' + table_count + ' (counter BIGINT) ; \
-			\
-			INSERT INTO ' + table_count + ' SELECT 0 as counter WHERE NOT EXISTS(SELECT * FROM ' + table_count + ') ; \
-			\
-			UPDATE ' + table_count + ' SET counter = (SELECT count(*) FROM ' + table + ') ; \
-			\
-			CREATE TRIGGER IF NOT EXISTS queue_insert \
-			AFTER INSERT \
-			ON ' + table + ' \
-			BEGIN \
-			UPDATE ' + table_count + ' SET counter = counter + 1 ; \
-			END; \
-			\
-			CREATE TRIGGER IF NOT EXISTS queue_delete \
-			AFTER DELETE \
-			ON ' + table + ' \
-			BEGIN \
-			UPDATE ' + table_count + ' SET counter = counter - 1 ; \
-			END; \
-			' ;
+			var query = ` 
+			CREATE TABLE IF NOT EXISTS ${table} (id INTEGER PRIMARY KEY ASC AUTOINCREMENT, job TEXT) ; 
+			
+			CREATE TABLE IF NOT EXISTS ${table_count} (counter BIGINT) ; 
+			
+			INSERT INTO ${table_count} SELECT 0 as counter WHERE NOT EXISTS(SELECT * FROM ${table_count}) ; 
+			
+			UPDATE ${table_count} SET counter = (SELECT count(*) FROM ${table}) ; 
+			
+			CREATE TRIGGER IF NOT EXISTS queue_insert 
+			AFTER INSERT 
+			ON ${table} 
+			BEGIN 
+			UPDATE ${table_count} SET counter = counter + 1 ; 
+			END; 
+			
+			CREATE TRIGGER IF NOT EXISTS queue_delete 
+			AFTER DELETE 
+			ON ${table} 
+			BEGIN 
+			UPDATE ${table_count} SET counter = counter - 1 ; 
+			END; 
+			` ;
 
 			self.db.exec(query, function(err) {
 				if(err !== null)
@@ -307,7 +307,7 @@ PersistentQueue.prototype.close = function close() {
 /**
  * Get the total number of jobs in the queue
  *
- * @return {integer} Total number of jobs left to run
+ * @return {number} Total number of jobs left to run
  */
 PersistentQueue.prototype.getLength = function() {
 	return this.length ;
@@ -364,7 +364,7 @@ PersistentQueue.prototype.abort = function() {
  * Called by user to add a job to the queue
  *
  * @param {Object} job Object to be serialized and added to queue via JSON.stringify()
- * @return {Promise<integer>} Job id
+ * @return {Promise<number>} Job id
  */
 PersistentQueue.prototype.add = function(job) {
 	var self = this ;
@@ -439,7 +439,7 @@ PersistentQueue.prototype.getSqlite3 = function() {
 
 /**
  * Returns true if there is a job with 'id' still in queue, otherwise false
- * @param {integer} id The job id to search for
+ * @param {number} id The job id to search for
  * @return {Promise} Promise resolves true if the job id is still in the queue, otherwise false
  */
 PersistentQueue.prototype.has = function(id) {
@@ -505,7 +505,7 @@ PersistentQueue.prototype.getFirstJobId = function(job) {
 
 /**
  * Delete a job from the queue (if it exists)
- * @param {integer} id The job id number to delete
+ * @param {number} id The job id number to delete
  */
 PersistentQueue.prototype.delete = function(id) {
 	var self = this ;
@@ -599,7 +599,7 @@ function hydrateQueue(self, size) { // eslint-disable-line no-unused-vars
 /**
  * This function will remove the given or current job from the database and in-memory array
  * @param {PersistentQueue} self Instance to work with
- * @param {integer} [id] Optional job id number to remove, if omitted, remove current job at front of queue
+ * @param {number} [id] Optional job id number to remove, if omitted, remove current job at front of queue
  * @return {Promise}
  */
 function removeJob(self, id) {
