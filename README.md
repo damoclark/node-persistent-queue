@@ -103,7 +103,7 @@ the SQLite DB and terminates the script.
 Note, that the `next` event handler, on completion of processing the task, must call the `.done()` 
 callback method.  This will then schedule another `next` event to be emitted, using `setImmediate()`.  
 
-The `.add()` method allow call chaining as illustrated below.
+The `.add()` method returns a promise that resolves when the job has been saved in the sqlite database.
 
 ```javascript
 var Queue = require('node-persistent-queue') ;
@@ -122,21 +122,21 @@ var task4 = {
 	data: "Data4"
 } ;
 
-q.on('open',function() {
+q.on('open',() => {
 	console.log('Opening SQLite DB') ;
 	console.log('Queue contains '+q.getLength()+' job/s') ;
 }) ;
 
-q.on('add',function(task) {
+q.on('add',task => {
 	console.log('Adding task: '+JSON.stringify(task)) ;
 	console.log('Queue contains '+q.getLength()+' job/s') ;
 }) ;
 
-q.on('start',function() {
+q.on('start',() => {
 	console.log('Starting queue') ;
 }) ;
 
-q.on('next',function(task) {
+q.on('next',task => {
 	console.log('Queue contains '+q.getLength()+' job/s') ;
 	console.log('Process task: ') ;
 	console.log(JSON.stringify(task)) ;
@@ -147,32 +147,32 @@ q.on('next',function(task) {
 }) ;
 
 // Stop the queue when it gets empty
-q.on('empty',function() {
+q.on('empty',() => {
 	console.log('Queue contains '+q.getLength()+' job/') ;
 	q.stop() ;
 	q.close()
-	.then(function() {
+	.then(() => {
 		process.exit(0) ;
 	})
 }) ;
 
-q.on('stop',function() {
+q.on('stop',() => {
 	console.log('Stopping queue') ;
 }) ;
 
-q.on('close',function() {
+q.on('close',() => {
 	console.log('Closing SQLite DB') ;
 }) ;
 
 q.open()
-.then(function() {
-	q.add(task1)
-		.add(task2)
-		.add(task3)
-		.add(task4)
-	.start() ;
+.then(() => {
+	q.add(task1) ;
+	q.add(task2) ;
+	q.add(task3) ;
+	q.add(task4) ;
+	q.start() ;
 })
-.catch(function(err) {
+.catch(err => {
 	console.log('Error occurred:') ;
 	console.log(err) ;
 	process.exit(1) ;
@@ -210,6 +210,8 @@ Queue contains 0 job/
 Stopping queue
 Closing SQLite DB
 ```
+
+Take a look at the test script for further examples of the API
 
 ### Notes
 

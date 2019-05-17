@@ -12,4 +12,4 @@ and not those used by the module itself
 
 ## Be able to manually remove jobs by id number or remove all jobs from queue
 
-`.remove(id)` and `.removeAll()` or `.purge()`
+`.deleteAll()` or `.purge()`
