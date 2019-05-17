@@ -38,7 +38,7 @@ var sqlite3 = require('sqlite3').verbose() ;
  * @const
  * @default
  */
-var table = 'queue' ;
+let table = 'queue' ;
 
 /**
  * Default counter table name for the sqlite db
@@ -46,7 +46,7 @@ var table = 'queue' ;
  * @const
  * @default
  */
-var table_count = 'queue_count' ;
+let table_count = 'queue_count' ;
 
 /**
  * Simple SQLite backed Queue for running many short tasks in Node.js
@@ -59,9 +59,6 @@ var table_count = 'queue_count' ;
 function PersistentQueue(filename, batchSize) {
 	// Call super-constructor
 	EventEmitter.call(this) ;
-
-	// Copy our instance for closures
-	var self = this ;
 
 	// If filename not provided, then throw error
 	if(filename === undefined)
@@ -130,85 +127,85 @@ function PersistentQueue(filename, batchSize) {
 	 */
 	this.run = false ;
 
-	this.on('start', function() {
-		if(self.db === null)
+	this.on('start', () => {
+		if(this.db === null)
 			throw new Error('Open queue database before starting queue') ;
 
-		if(self.run === false) {
-			self.run = true ;
-			self.emit('trigger_next') ;
+		if(this.run === false) {
+			this.run = true ;
+			this.emit('trigger_next') ;
 		}
 	}) ;
 
-	this.on('stop', function() {
-		self.run = false ;
+	this.on('stop', () => {
+		this.run = false ;
 	}) ;
 
-	this.on('trigger_next', function() {
-		if(self.debug) console.log('trigger_next') ;
+	this.on('trigger_next', () => {
+		if(this.debug) console.log('trigger_next') ;
 		//Check state of queue
-		if(!self.run || self.empty) {
-			if(self.debug) console.log('run='+self.run+' and empty='+self.empty) ;
-			if(self.debug) console.log('not started or empty queue') ;
+		if(!this.run || this.empty) {
+			if(this.debug) console.log('run='+this.run+' and empty='+this.empty) ;
+			if(this.debug) console.log('not started or empty queue') ;
 			// If queue not started or is empty, then just return
 			return ;
 		}
 
 		// Define our embedded recursive function to be called later
-		function trigger() {
-			self.emit('next', self.queue[0]) ;
-		}
+		const trigger = () => {
+			this.emit('next', this.queue[0]) ;
+		};
 
 		// If our in-memory list is empty, but queue is not, re-hydrate from db
-		if(self.queue.length === 0 && self.length !== 0) {
+		if(this.queue.length === 0 && this.length !== 0) {
 
 			hydrateQueue(this, this.batchSize)
-			.then(function() {
+			.then(() => {
 				// Schedule job for next check phase in event loop
 				setImmediate(trigger) ;
 			})
-			.catch(function(err) {
+			.catch(err => {
 				console.error(err) ;
 				process.exit(1) ;
 			}) ;
 		}
-		else if(self.queue.length) { // If in-memory queue not empty, trigger next job
+		else if(this.queue.length) { // If in-memory queue not empty, trigger next job
 			// https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/
 			setImmediate(trigger) ;
 		}
 		else { // Otherwise queue is empty
-			self.emit('empty') ;
+			this.emit('empty') ;
 		}
 	}) ;
 
 	// Set instance to empty on empty event
-	this.on('empty', function() {
-		self.empty = true ;
+	this.on('empty', () => {
+		this.empty = true ;
 	}) ;
 
 	// If a job is added, trigger_next event
 	// eslint-disable-next-line no-unused-vars
-	this.on('add', function(job) {
-		if(self.empty) {
-			self.empty = false ;
-			if(self.debug) console.log('No longer empty') ;
-			if(self.run)
-				self.emit('trigger_next') ;
+	this.on('add', job => {
+		if(this.empty) {
+			this.empty = false ;
+			if(this.debug) console.log('No longer empty') ;
+			if(this.run)
+				this.emit('trigger_next') ;
 		}
 	}) ;
 
 	// eslint-disable-next-line no-unused-vars
-	this.on('open', function(db) {
-		self.opened = true ;
+	this.on('open', db => {
+		this.opened = true ;
 	}) ;
 
 	// Unset the db variable when db is closed
-	this.on('close', function() {
-		self.opened = false ;
-		self.db = null ;
-		self.empty = undefined ;
-		self.run = false ;
-		self.queue = [] ;
+	this.on('close', () => {
+		this.opened = false ;
+		this.db = null ;
+		this.empty = undefined ;
+		this.run = false ;
+		this.queue = [] ;
 	}) ;
 }
 PersistentQueue.prototype = Object.create(EventEmitter.prototype) ;
@@ -218,28 +215,28 @@ PersistentQueue.prototype = Object.create(EventEmitter.prototype) ;
  *
  * @return {Promise}
  */
-PersistentQueue.prototype.open = function open() {
-	var self = this ;
+PersistentQueue.prototype.open = function() {
+
 
 	// return a promise from open method from:
-	return new Promise(function(resolve, reject) {
+	return new Promise((resolve, reject) => {
 		// Opening db
-		self.db = new sqlite3.Database(self.dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, function(err) {
+		this.db = new sqlite3.Database(this.dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, err => {
 			if(err !== null)
 				reject(err) ;
 			resolve() ;
 		}) ;
 	})
-	.then(function() {
+	.then(() => {
 		// Puts the execution mode into serialized. This means that at most one statement object can execute a query
 		// at a time. Other statements wait in a queue until the previous statements are executed.
 		// If you call it without a function parameter, the execution mode setting is sticky and won't change until
 		// the next call to Database#parallelize.
 		// https://github.com/mapbox/node-sqlite3/wiki/Control-Flow#databaseserializecallback
-		self.db.serialize() ;
+		this.db.serialize() ;
 		// Create and initialise tables if they doesnt exist
-		return new Promise(function(resolve, reject) {
-			var query = ` 
+		return new Promise((resolve, reject) => {
+			let query = ` 
 			CREATE TABLE IF NOT EXISTS ${table} (id INTEGER PRIMARY KEY ASC AUTOINCREMENT, job TEXT) ; 
 			
 			CREATE TABLE IF NOT EXISTS ${table_count} (counter BIGINT) ; 
@@ -263,7 +260,7 @@ PersistentQueue.prototype.open = function open() {
 			END; 
 			` ;
 
-			self.db.exec(query, function(err) {
+			this.db.exec(query, err => {
 				if(err !== null)
 					reject(err) ;
 
@@ -271,17 +268,15 @@ PersistentQueue.prototype.open = function open() {
 			}) ;
 		}) ;
 	})
-	.then(function() {
-		return countQueue(self) ;
-	})
-	.then(function() {
+	.then(() => countQueue(this))
+	.then(() => {
 		// Load batchSize number of jobs from queue (if there are any)
-		return hydrateQueue(self, self.batchSize)
-		.then(function(jobs) {
+		return hydrateQueue(this, this.batchSize)
+		.then(jobs => {
 			//If no msg left, set empty to true (but don't emit event)
-			self.empty = (self.queue.length === 0) ;
+			this.empty = (this.queue.length === 0) ;
 
-			self.emit('open', self.db) ;
+			this.emit('open', this.db) ;
 			return Promise.resolve(jobs) ;
 		}) ;
 	}) ;
@@ -292,13 +287,13 @@ PersistentQueue.prototype.open = function open() {
  *
  * @return {Promise}
  */
-PersistentQueue.prototype.close = function close() {
-	var self = this ;
-	return new Promise(function(resolve, reject) {
-		self.db.close(function(err) {
+PersistentQueue.prototype.close = function() {
+
+	return new Promise((resolve, reject) => {
+		this.db.close(err => {
 			if(err)
 				reject(err) ;
-			self.emit('close') ;
+			this.emit('close') ;
 			resolve() ;
 		}) ;
 	}) ;
@@ -333,17 +328,17 @@ PersistentQueue.prototype.stop = function() {
  * It will remove the current  job from the sqlite queue and emit another 'next' event
  */
 PersistentQueue.prototype.done = function() {
-	var self = this ;
-	if(self.debug) console.log('Calling done!') ;
+
+	if(this.debug) console.log('Calling done!') ;
 	// Remove the job from the queue
 	removeJob(this)
-	.then(function() {
-		if(self.debug) console.log('Job deleted from db') ;
+	.then(() => {
+		if(this.debug) console.log('Job deleted from db') ;
 		// Decrement our job length
-		self.length-- ;
-		self.emit('trigger_next') ;
+		this.length-- ;
+		this.emit('trigger_next') ;
 	})
-	.catch(function(err) {
+	.catch(err => {
 		console.error(err) ;
 		process.exit(1) ;
 	}) ;
@@ -355,9 +350,9 @@ PersistentQueue.prototype.done = function() {
  * It will leave the current job in the queue and stop the queue
  */
 PersistentQueue.prototype.abort = function() {
-	var self = this ;
-	if(self.debug) console.log('Calling abort!') ;
-	self.stop() ;
+
+	if(this.debug) console.log('Calling abort!') ;
+	this.stop() ;
 } ;
 
 /**
@@ -367,17 +362,17 @@ PersistentQueue.prototype.abort = function() {
  * @return {Promise<number>} Job id
  */
 PersistentQueue.prototype.add = function(job) {
-	var self = this ;
 
-	return new Promise(function(resolve, reject) {
-		self.db.run('INSERT INTO ' + table + ' (job) VALUES (?)', JSON.stringify(job), function(err) {
+
+	return new Promise((resolve, reject) => {
+		this.db.run('INSERT INTO ' + table + ' (job) VALUES (?)', JSON.stringify(job), err => {
 			if(err)
 				reject(err) ;
 
 			// Increment our job length
-			self.length++ ;
+			this.length++ ;
 
-			self.emit('add', { id: this.lastID, job: job }) ;
+			this.emit('add', { id: this.lastID, job: job }) ;
 			resolve(this.id) ;
 		}) ;
 	}) ;
@@ -443,15 +438,15 @@ PersistentQueue.prototype.getSqlite3 = function() {
  * @return {Promise} Promise resolves true if the job id is still in the queue, otherwise false
  */
 PersistentQueue.prototype.has = function(id) {
-	var self = this ;
+
 	// First search the in-memory queue as its quick
-	return new Promise(function(reject, resolve) {
-		for(var i=0 ; i<self.queue.length ; i++) {
-			if(self.queue[i].id === id)
+	return new Promise((reject, resolve) => {
+		for(let i=0 ; i<this.queue.length ; i++) {
+			if(this.queue[i].id === id)
 				resolve(true) ;
 		}
 		// Now check the on-disk queue
-		this.db.get('SELECT id FROM ' + table + ' where id = ?', id, function(err, row) {
+		this.db.get('SELECT id FROM ' + table + ' where id = ?', id, (err, row) => {
 			if(err !== null)
 				reject(err) ;
 
@@ -476,23 +471,23 @@ PersistentQueue.prototype.getJobIds = function(job) {
  * @return {Promise<array>}
  */
 PersistentQueue.prototype.getFirstJobId = function(job) {
-	var self = this ;
+
 	// eslint-disable-next-line no-unused-vars
-	return new Promise(function(resolve, reject) {
+	return new Promise((resolve, reject) => {
 		// search in-memory queue first
-		var jobstr = JSON.stringify(job) ;
+		let jobstr = JSON.stringify(job) ;
 		// console.warn(`jobstr=${jobstr}`);
-		var i = self.queue.findIndex(function(j) {
+		let i = this.queue.findIndex(j => {
 			// console.warn(`job=${JSON.stringify(j)}`);
 			return (JSON.stringify(j.job) === jobstr) ;
 		}) ;
 		if (i !== -1) {
-			resolve(self.queue[i].id) ;
+			resolve(this.queue[i].id) ;
 			return ;
 		}
 		// Otherwise have to search rest of db queue
-		searchQueue(self, job)
-		.then(function(data){
+		searchQueue(this, job)
+		.then(data => {
 			if (data.length === 0) {
 				resolve(null) ;
 				return ;
@@ -508,52 +503,50 @@ PersistentQueue.prototype.getFirstJobId = function(job) {
  * @param {number} id The job id number to delete
  */
 PersistentQueue.prototype.delete = function(id) {
-	var self = this ;
+
 	return removeJob(this, id)
-	.then(function() {
-		if(self.debug) console.log('Job deleted from db') ;
-		self.emit('delete', { id: id }) ;
+	.then(() => {
+		if(this.debug) console.log('Job deleted from db') ;
+		this.emit('delete', { id: id }) ;
 		// Decrement our job length
-		self.length-- ;
+		this.length-- ;
 	}) ;
 } ;
 
-function countQueue(self) {
-	if(self.debug) console.log('CountQueue') ;
-	return new Promise(function(resolve, reject) {
-		if(self.db === null)
+function countQueue(q) {
+	if(q.debug) console.log('CountQueue') ;
+	return new Promise((resolve, reject) => {
+		if(q.db === null)
 			reject('Open queue database before counting jobs') ;
 
-		self.db.get('SELECT counter FROM ' + table_count + ' LIMIT 1', function(err, row) {
+		q.db.get('SELECT counter FROM ' + table_count + ' LIMIT 1', (err, row) => {
 			if(err !== null)
 				reject(err) ;
 
 			// Set length property to number of rows in sqlite table
-			self.length = row.counter ;
+			q.length = row.counter ;
 			resolve(this.length) ;
 		}) ;
 	}) ;
 }
 
-function searchQueue(self, job) {
+function searchQueue(q, job) {
 
-	if(self.debug) console.log('SearchQueue') ;
-	return new Promise(function(resolve, reject) {
-		if(self.db === null)
+	if(q.debug) console.log('SearchQueue') ;
+	return new Promise((resolve, reject) => {
+		if(q.db === null)
 			reject('Open queue database before starting queue') ;
 
-		self.db.all('SELECT id FROM ' + table + ' where job =\'' + JSON.stringify(job) + '\' ORDER BY id ASC', function(err, jobs) {
+		q.db.all('SELECT id FROM ' + table + ' where job =\'' + JSON.stringify(job) + '\' ORDER BY id ASC', (err, jobs) => {
 			if(err !== null)
 				reject(err) ;
 
-			jobs = jobs.map(function(j){
-				return j.id ;
-			}) ;
+			jobs = jobs.map(j => j.id) ;
 
-			if(self.debug) {
-				for(var i = 0 ; i < jobs.length ; i++) 
-					if(self.debug) console.log(JSON.stringify(jobs[i])) ;
-				
+			if(q.debug) {
+				for(let i = 0 ; i < jobs.length ; i++)
+					if(q.debug) console.log(JSON.stringify(jobs[i])) ;
+
 			}
 			resolve(jobs) ;
 		}) ;
@@ -562,27 +555,27 @@ function searchQueue(self, job) {
 
 /**
  * This function will load from the database, 'size' number of records into queue array
- * @param {PersistentQueue} self Instance of queue
+ * @param {PersistentQueue} q Instance of queue
  * @param size How many records to hydrate
  */
-function hydrateQueue(self, size) { // eslint-disable-line no-unused-vars
+function hydrateQueue(q, size) { // eslint-disable-line no-unused-vars
 
-	if(self.debug) console.log('HydrateQueue') ;
-	return new Promise(function(resolve, reject) {
-		if(self.db === null)
+	if(q.debug) console.log('HydrateQueue') ;
+	return new Promise((resolve, reject) => {
+		if(q.db === null)
 			reject('Open queue database before starting queue') ;
 
-		self.db.all('SELECT * FROM ' + table + ' ORDER BY id ASC LIMIT ' + self.batchSize, function(err, jobs) {
+		q.db.all('SELECT * FROM ' + table + ' ORDER BY id ASC LIMIT ' + q.batchSize, (err, jobs) => {
 			if(err !== null)
 				reject(err) ;
 
-			if(self.debug) {
-				for(var i = 0 ; i < jobs.length ; i++) 
-					if(self.debug) console.log(JSON.stringify(jobs[i])) ;
-				
+			if(q.debug) {
+				for(let i = 0 ; i < jobs.length ; i++)
+					if(q.debug) console.log(JSON.stringify(jobs[i])) ;
+
 			}
 			// Update our queue array (converting stored string back to object using JSON.parse
-			self.queue = jobs.map(function(job){
+			q.queue = jobs.map(job => {
 				try {
 					return { id: job.id, job: JSON.parse(job.job)} ;
 				}
@@ -598,33 +591,33 @@ function hydrateQueue(self, size) { // eslint-disable-line no-unused-vars
 
 /**
  * This function will remove the given or current job from the database and in-memory array
- * @param {PersistentQueue} self Instance to work with
+ * @param {PersistentQueue} q Instance to work with
  * @param {number} [id] Optional job id number to remove, if omitted, remove current job at front of queue
  * @return {Promise}
  */
-function removeJob(self, id) {
+function removeJob(q, id) {
 	if(id === undefined) {
-		id = self.queue.shift().id ;
+		id = q.queue.shift().id ;
 	}
 	else {
 		// Search queue for id and remove if exists
-		for(var i=0 ; i<self.queue.length ; i++) {
-			if(self.queue[i].id === id) {
-				self.queue.splice(i, 1) ;
+		for(let i=0 ; i<q.queue.length ; i++) {
+			if(q.queue[i].id === id) {
+				q.queue.splice(i, 1) ;
 				break ;
 			}
 		}
 	}
 
-	return new Promise(function(resolve, reject) {
-		if(self.db === null)
+	return new Promise((resolve, reject) => {
+		if(q.db === null)
 			reject('Open queue database before starting queue') ;
 
-		if(self.debug) console.log('About to delete') ;
-		if(self.debug) console.log('Removing job: '+id) ;
-		if(self.debug) console.log('From table: '+table) ;
-		if(self.debug) console.log('With queue length: '+self.length) ;
-		self.db.run('DELETE FROM ' + table + ' WHERE id = ?', id, function(err) {
+		if(q.debug) console.log('About to delete') ;
+		if(q.debug) console.log('Removing job: '+id) ;
+		if(q.debug) console.log('From table: '+table) ;
+		if(q.debug) console.log('With queue length: '+q.length) ;
+		q.db.run('DELETE FROM ' + table + ' WHERE id = ?', id, function(err) {
 			if(err !== null)
 				reject(err) ;
 
