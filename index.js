@@ -154,7 +154,7 @@ function PersistentQueue(filename, batchSize) {
 		// Define our embedded recursive function to be called later
 		const trigger = () => {
 			this.emit('next', this.queue[0]) ;
-		};
+		} ;
 
 		// If our in-memory list is empty, but queue is not, re-hydrate from db
 		if(this.queue.length === 0 && this.length !== 0) {
@@ -435,7 +435,7 @@ PersistentQueue.prototype.getSqlite3 = function() {
 /**
  * Returns true if there is a job with 'id' still in queue, otherwise false
  * @param {number} id The job id to search for
- * @return {Promise} Promise resolves true if the job id is still in the queue, otherwise false
+ * @return {Promise<boolean>} Promise resolves true if the job id is still in the queue, otherwise false
  */
 PersistentQueue.prototype.has = function(id) {
 
@@ -459,7 +459,7 @@ PersistentQueue.prototype.has = function(id) {
 /**
  * Return an array of job id numbers matching the given job data in order of execution
  * @param {object} job
- * @return {Promise<array>}
+ * @return {Promise<number[]>}
  */
 PersistentQueue.prototype.getJobIds = function(job) {
 	return searchQueue(this, job) ;
@@ -468,7 +468,7 @@ PersistentQueue.prototype.getJobIds = function(job) {
 /**
  * Return an array of job id numbers matching the given job data in order of execution
  * @param {object} job
- * @return {Promise<array>}
+ * @return {Promise<number>}
  */
 PersistentQueue.prototype.getFirstJobId = function(job) {
 
@@ -501,15 +501,20 @@ PersistentQueue.prototype.getFirstJobId = function(job) {
 /**
  * Delete a job from the queue (if it exists)
  * @param {number} id The job id number to delete
+ * @return {Promise<number>} The id number that was deleted
  */
 PersistentQueue.prototype.delete = function(id) {
 
-	return removeJob(this, id)
-	.then(() => {
-		if(this.debug) console.log('Job deleted from db') ;
-		this.emit('delete', { id: id }) ;
-		// Decrement our job length
-		this.length-- ;
+	return new Promise((resolve, reject) => {
+		removeJob(this, id)
+		.then(() => {
+			if(this.debug) console.log('Job deleted from db') ;
+			this.emit('delete', { id: id }) ;
+			// Decrement our job length
+			this.length-- ;
+			resolve(id) ;
+		})
+		.catch(reject) ;
 	}) ;
 } ;
 
