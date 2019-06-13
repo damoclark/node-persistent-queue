@@ -542,7 +542,7 @@ function searchQueue(q, job) {
 		if(q.db === null)
 			reject('Open queue database before starting queue') ;
 
-		q.db.all('SELECT id FROM ' + table + ' where job =\'' + JSON.stringify(job) + '\' ORDER BY id ASC', (err, jobs) => {
+		q.db.all(`SELECT id FROM ${table} where job = ? ORDER BY id ASC`, JSON.stringify(job), (err, jobs) => {
 			if(err !== null)
 				reject(err) ;
 
