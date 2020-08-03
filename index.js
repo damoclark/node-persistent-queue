@@ -181,6 +181,8 @@ function PersistentQueue(filename, batchSize) {
 	// Set instance to empty on empty event
 	this.on('empty', () => {
 		this.empty = true ;
+		// Ask sqlite to free up unused space
+		this.db.exec("VACUUM;")
 	}) ;
 
 	// If a job is added, trigger_next event
