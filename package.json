@@ -3,6 +3,7 @@
   "version": "1.0.3",
   "description": "Simple SQLite backed Queue for running many short tasks in Node.js event thread",
   "main": "index.js",
+  "types": "index.d.ts",
   "keywords": [
     "sqlite",
     "persistent",
