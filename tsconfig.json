@@ -1,0 +1,10 @@
+{
+  "files": ["./index.js"],
+  "exclude": ["test/**/*.js"],
+  "compilerOptions": {
+    "allowJs": true,
+    "declaration": true,
+    "noEmit": false,
+    "emitDeclarationOnly": true
+  }
+}
