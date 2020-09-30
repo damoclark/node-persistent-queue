@@ -16,6 +16,9 @@
     "node": ">=6.0.0"
   },
   "scripts": {
+    "declaration:build": "rm -f index.d.ts && tsc -p tsconfig.json",
+    "declaration:check": "git diff --exit-code -- index.d.ts",
+    "prepublishOnly": "npm run --silent declaration:build && npm run --silent declaration:check",
     "test": "mocha"
   },
   "author": {
@@ -31,6 +34,7 @@
     "mocha": "^5.2.0",
     "should": "^11.2.1",
     "should-sinon": "0.0.5",
-    "sinon": "^2.2.0"
+    "sinon": "^2.2.0",
+    "typescript": "^4.0.3"
   }
 }
