@@ -91,7 +91,7 @@ describe('Correct queue fifo order', () => {
 		.then(() => {
 			q.start() ;
 
-			for(let i = 0 ; i < 100 ; ++i) {
+			for(let i = 0 ; i < 1000 ; ++i) {
 				let task = {sequence: i} ;
 				q.add(task) ;
 			}

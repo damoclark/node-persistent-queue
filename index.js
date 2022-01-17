@@ -224,7 +224,8 @@ PersistentQueue.prototype.open = function() {
 	return new Promise((resolve, reject) => {
 		// Opening db
 		this.db = new sqlite3.Database(this.dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, err => {
-			if(err !== null) return reject(err) ;
+			if(err !== null)
+				reject(err) ;
 			resolve() ;
 		}) ;
 	})
@@ -280,7 +281,7 @@ PersistentQueue.prototype.open = function() {
 			this.emit('open', this.db) ;
 			return Promise.resolve(jobs) ;
 		}) ;
-	})
+	}) ;
 } ;
 
 /**
@@ -291,13 +292,12 @@ PersistentQueue.prototype.open = function() {
 PersistentQueue.prototype.close = function() {
 
 	return new Promise((resolve, reject) => {
-		setTimeout(() => {
-			this.db.close(err => {
-				if(err) return reject(err) ;
-				this.emit('close') ;
-				resolve() ;
-			})
-		}, 0)
+		this.db.close(err => {
+			if(err)
+				reject(err) ;
+			this.emit('close') ;
+			resolve() ;
+		}) ;
 	}) ;
 } ;
 
