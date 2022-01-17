@@ -292,12 +292,14 @@ PersistentQueue.prototype.open = function() {
 PersistentQueue.prototype.close = function() {
 
 	return new Promise((resolve, reject) => {
-		this.db.close(err => {
-			if(err)
-				reject(err) ;
-			this.emit('close') ;
-			resolve() ;
-		}) ;
+		setTimeout(() => {
+			this.db.close(err => {
+				if(err)
+					reject(err) ;
+				this.emit('close') ;
+				resolve() ;
+			}) ;
+		}, 0) ;
 	}) ;
 } ;
 
