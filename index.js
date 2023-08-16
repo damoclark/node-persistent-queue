@@ -367,17 +367,18 @@ PersistentQueue.prototype.abort = function() {
  */
 PersistentQueue.prototype.add = function(job) {
 
+	const self = this ;
 
 	return new Promise((resolve, reject) => {
-		this.db.run('INSERT INTO ' + table + ' (job) VALUES (?)', JSON.stringify(job), err => {
+		this.db.run('INSERT INTO ' + table + ' (job) VALUES (?)', JSON.stringify(job), function(err) {
 			if(err)
 				reject(err) ;
 
 			// Increment our job length
-			this.length++ ;
+			self.length++ ;
 
 			this.emit('add', { id: this.lastID, job: job }) ;
-			resolve(this.id) ;
+			resolve(this.lastID) ;
 		}) ;
 	}) ;
 } ;
