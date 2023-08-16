@@ -360,7 +360,6 @@ describe('Close Errors', () => {
 	}) ;
 }) ;
 
-
 describe('Invalid JSON', () => {
 	it('should throw on bad json stored in db', done => {
 		let q = new Queue('./test/db.sqlite', 1) ;
@@ -565,4 +564,39 @@ describe('Emitters', () => {
 			done() ;
 		}) ;
 	}) ;
+}) ;
+
+describe('Deleting jobs', () => {
+	let q ;
+	beforeEach(done => {
+		q = new Queue(':memory:') ;
+		q.open()
+		.then(() => done())
+		.catch(err => done(err)) ;
+	}) ;
+
+	it('should allow the user to delete a yet-to-be-processed job', done => {
+		q.open()
+		.then(() => {
+			let addPromises = [] ;
+			for(let i = 0 ; i < 10 ; ++i) {
+				let task = {sequence: i % 501} ;
+				addPromises.push(q.add(task)) ;
+			}
+
+			let deletePromises = [] ;
+			Promise.all(addPromises).then((jobIds) => {
+				for(let i = 0 ; i < 10 ; ++i) {
+					(typeof jobIds[i]).should.equal('number') ;
+					deletePromises.push(q.delete(jobIds[i])) ;
+				}
+
+				return Promise.all(deletePromises).then(() => {
+					q.getLength().should.equal(0) ;
+					q.close().then(() => done()) ;
+				}) ;
+			}) ;
+		}) ;
+	}) ;
+
 }) ;
