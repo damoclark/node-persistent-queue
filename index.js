@@ -377,7 +377,7 @@ PersistentQueue.prototype.add = function(job) {
 			// Increment our job length
 			self.length++ ;
 
-			this.emit('add', { id: this.lastID, job: job }) ;
+			self.emit('add', { id: this.lastID, job: job }) ;
 			resolve(this.lastID) ;
 		}) ;
 	}) ;
