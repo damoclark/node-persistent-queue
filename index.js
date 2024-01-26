@@ -153,7 +153,9 @@ function PersistentQueue(filename, batchSize) {
 
 		// Define our embedded recursive function to be called later
 		const trigger = () => {
-			this.emit('next', this.queue[0]) ;
+			for (const queue of this.queue) {
+				this.emit('next', queue);
+			}
 		} ;
 
 		// If our in-memory list is empty, but queue is not, re-hydrate from db
@@ -331,16 +333,16 @@ PersistentQueue.prototype.stop = function() {
  *
  * It will remove the current  job from the sqlite queue and emit another 'next' event
  */
-PersistentQueue.prototype.done = function() {
+PersistentQueue.prototype.done = function(id) {
 
 	if(this.debug) console.log('Calling done!') ;
 	// Remove the job from the queue
-	removeJob(this)
+	removeJob(this, id)
 	.then(() => {
 		if(this.debug) console.log('Job deleted from db') ;
 		// Decrement our job length
 		this.length-- ;
-		this.emit('trigger_next') ;
+		if (this.queue === 0) this.emit('trigger_next') ;
 	})
 	.catch(err => {
 		console.error(err) ;
